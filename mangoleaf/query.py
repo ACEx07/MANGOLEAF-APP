@@ -247,3 +247,50 @@ def update_rating(dataset, user_id, item_id, rating):
         """
         connection.execute(text(query), dict(user_id=user_id, item_id=item_id, rating=rating))
         connection.commit()
+
+
+def get_filtered(dataset, n, user_id, where_query, query_params):
+    """
+    Get filtered items with rating from the database
+
+    Parameters
+    ----------
+    dataset : {"books", "mangas"}
+        Dataset: "books" or "mangas"
+
+    n : int
+        Number of items to load
+
+    user_id : int
+        ID of the user to load add the ratings for
+
+    where_query : str
+        WHERE query to filter the items
+
+    query_params : dict
+        Parameters for the WHERE query
+
+    Returns
+    -------
+    df : pd.DataFrame
+        DataFrame with the filtered items
+    """
+    if user_id is not None:
+        where_query = (
+            f"""
+        LEFT JOIN (
+            SELECT * FROM {dataset}_ratings
+            WHERE user_id = {user_id}
+        ) r USING (item_id)
+        """
+            + where_query
+        )
+
+    query_str = f"""
+    SELECT * FROM {dataset}
+    {where_query}
+    ORDER BY title
+    LIMIT {n};
+    """
+    df = pd.read_sql(query_str, Connection().get(), params=query_params)
+    return df
