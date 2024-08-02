@@ -4,6 +4,7 @@ Functionality for the frontend of repeated tasks
 
 import re
 
+import pandas as pd
 import streamlit as st
 
 from mangoleaf import authentication, query
@@ -22,6 +23,12 @@ def add_config():
 def add_style():
     with open("style/style.css") as f:
         st.html(f"<style>{f.read()}</style>")
+
+
+def add_header_logo(header):
+    col1, col2 = st.columns([1, 7])
+    col1.image("images/mango_logo.png", width=130)
+    col2.title(f"**{header.upper()}**", anchor=False)
 
 
 def add_sidebar_logo():
@@ -224,6 +231,221 @@ def add_mixed_recommendations(n):
                 )
 
     return hydrate
+
+
+def filter_builder(filter_options, display_names=None):
+    """
+    Adds filter options for the user to query the database
+
+    Parameters
+    ----------
+    filter_options : dict
+        Mapping of column names to select for filtering and their filter
+        type, either "text", "rating", or a tuple/list of categories for
+        a multiselect
+
+    display_names : list, optional
+        List of display names for the columns in the filter. Defaults to
+        the table column names
+
+    Returns
+    -------
+    where_query : str
+        Partial SQL query to filter the database (WHERE clause)
+
+    query_params : dict
+        Mapping of query parameters to pass to the SQL query
+    """
+    clauses = []
+    query_params = {}
+    if display_names is None:
+        display_names = list(filter_options.keys())
+    with st.container(border=True):
+        for (column, filter_type), disp_name in zip(filter_options.items(), display_names):
+
+            assert column.find(" ") == -1, "Column names cannot contain spaces"
+
+            if isinstance(filter_type, str) and filter_type == "text":
+                # Text search
+                user_text_input = st.text_input(f"Search {disp_name}", key=f"{column}_text_input")
+                if user_text_input:
+                    query_params[column] = f"%{user_text_input}%"
+                    clauses.append(column + f" LIKE %({column})s")
+            elif isinstance(filter_type, str) and filter_type == "rating":
+                # Numeric range slider
+                col1, col2 = st.columns(2, gap="large", vertical_alignment="center")
+                user_num_input = col1.slider(
+                    "Range of your rating",
+                    min_value=1,
+                    max_value=5,
+                    value=(1, 5),
+                    step=1,
+                    key=f"{column}_num_slider",
+                )
+                user_bool_input = col2.checkbox(
+                    "Include unrated",
+                    value=True,
+                    key=f"{column}_bool_checkbox",
+                )
+                query_params[f"{column}_min"] = int(user_num_input[0])
+                query_params[f"{column}_max"] = int(user_num_input[1])
+                if user_bool_input:
+                    clauses.append(
+                        "(" + column + f" BETWEEN %({column}_min)s AND %({column}_max)s"
+                        " OR " + column + " IS NULL)"
+                    )
+                else:
+                    clauses.append(column + f" BETWEEN %({column}_min)s AND %({column}_max)s")
+            else:
+                # Categorical values
+                filter_type = list(map(str, filter_type))
+                user_cat_input = st.multiselect(
+                    f"Categories of {disp_name}",
+                    filter_type,
+                    default=filter_type,
+                    key=f"{column}_cat_multiselect",
+                )
+                query_params[column] = tuple(user_cat_input)
+                clauses.append(column + f" IN %({column})s")
+
+    where_query = " AND ".join(clauses)
+    if where_query:
+        where_query = "WHERE " + where_query
+    return where_query, query_params
+
+
+def update_rating(dataset, user_id, item_id, rating_before, key):
+    """
+    Update the user rating in the database
+
+    Parameters
+    ----------
+    dataset : {"books", "mangas"}
+        Database to update the rating in
+
+    user_id : int
+        User ID to update the rating for
+
+    item_id : int
+        Item ID to update the rating for
+
+    rating_before : int
+        Previous rating before the update
+
+    key : str
+        Session state key for the rating
+    """
+    rating = st.session_state.get(key, pd.NA)
+    if not pd.isna(rating):
+        rating += 1
+        if rating != rating_before:
+            query.update_rating(dataset, user_id, item_id, rating)
+            st.toast("Rating updated", icon="⭐")
+
+
+def add_explorer(dataset, user_id, n, filter_options, display_names=None):
+    """
+    Add the explorer for the database
+
+    Parameters
+    ----------
+    dataset : {"books", "mangas"}
+        Database to explore
+
+    user_id : int
+        User ID to get the ratings for
+
+    n : int
+        Maximum number of items to display
+
+    filter_options : dict
+        Mapping of column names to select for filtering and their filter
+
+    display_names : list, optional
+        List of display names for the columns in the filter. Defaults
+        to the column names
+    """
+    st.markdown(
+        f"Have a look through our {dataset[:-1]} database and use filters "
+        "to find what you are looking for!"
+    )
+
+    # Filter the database
+    where_query, query_params = filter_builder(filter_options, display_names)
+    df = query.get_filtered(dataset, n, user_id, where_query, query_params)
+
+    # Fill the ratings
+    for _, row in df.iterrows():
+        if not pd.isna(row.get("rating", pd.NA)):
+            key = f"rate_{row['item_id']}"
+            st.session_state[key] = row["rating"] - 1
+
+    # Check for empty results
+    st.html("<br>")
+    if len(df) <= 0:
+        st.html(
+            """
+        <div class="explorer_info">
+            <div>No items found with the given filters.</div>
+        </div>
+        """
+        )
+        return
+
+    # HTML elements for the items
+    if "author" in df.columns:
+        url = "https://isbnsearch.org/isbn/"
+    else:
+        url = "https://myanimelist.net/anime/"
+    html_element = """
+        <div class="rec_element">
+            <a href="{url}{item_id}" rel="noopener noreferrer" target="_blank">
+                <img src="{img_src}" alt="" class="rec_image">
+                <div class="rec_text">
+                    <p></p>
+                    <p>{title}</p>
+                    <p>{secondary}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+    """
+
+    # Add the items in a grid
+    outer_columns = st.columns(3)
+    for idx, (_, row) in enumerate(df.iterrows()):
+        col1, col2 = outer_columns[idx % 3].columns([1, 3])
+
+        col1.html(
+            html_element.format(
+                url=url,
+                item_id=row["item_id"],
+                title=row["title"],
+                secondary=row.iloc[2],
+                img_src=row["image"],
+            )
+        )
+        col2.markdown(f"**{row['title']}**  \n{row.iloc[2]}")
+        key = f"rate_{row['item_id']}"
+        col2.feedback(
+            "stars",
+            key=key,
+            on_change=update_rating,
+            args=(dataset, user_id, row["item_id"], row.get("rating", pd.NA), key),
+            disabled=user_id is None,
+        )
+        if user_id is None:
+            col2.markdown("Log in to rate")
+
+    # Add note about limited results
+    if len(df) >= n:
+        st.html(
+            f"""
+        <div class="explorer_info">
+            <div>Showing the first {n} results. Refine your search to see more.</div>
+        </div>
+        """
+        )
 
 
 def add_sidebar_login():
