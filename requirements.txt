@@ -1,0 +1,15 @@
+bcrypt
+black
+flake8
+ipython
+isort
+jupyterlab
+notebook
+numpy==1.26.4
+pandas
+psycopg2-binary
+scikit-surprise
+sqlalchemy
+streamlit
+tqdm
+-e .
