@@ -12,6 +12,9 @@ def reset():
     st.session_state["username"] = None
     st.session_state["full_name"] = None
     st.session_state["user_id"] = None
+    for key in st.session_state.keys():
+        if key.startswith("rate_"):
+            del st.session_state[key]
 
 
 def authenticate(username, password):
