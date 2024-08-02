@@ -42,7 +42,7 @@ CREATE TABLE mangas (
 CREATE TABLE books_ratings (
   user_id INTEGER NOT NULL,
   item_id VARCHAR(20) NOT NULL,
-  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 10),
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
   PRIMARY KEY (user_id, item_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (item_id) REFERENCES books(item_id)
@@ -51,7 +51,7 @@ CREATE TABLE books_ratings (
 CREATE TABLE mangas_ratings (
   user_id INTEGER NOT NULL,
   item_id INTEGER NOT NULL,
-  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 10),
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
   PRIMARY KEY (user_id, item_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (item_id) REFERENCES mangas(item_id)
