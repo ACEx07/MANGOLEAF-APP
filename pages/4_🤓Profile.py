@@ -36,10 +36,6 @@ user_data = authentication.get_user_info()
 
 # Profile picture upload
 
-import streamlit as st
-import os
-from PIL import Image
-
 # Directory to store uploaded images
 UPLOAD_FOLDER = 'uploaded_images'
 
@@ -62,36 +58,46 @@ def load_image(user_id):
 
 def user_profile(user_id):
     """Display the user profile page."""
-
-    # Check if a profile picture exists for the user
+    
+    # Load and display the existing profile image
     profile_image = load_image(user_id)
 
     if profile_image is not None:
-        # Display the profile picture in a smaller size
-        st.image(profile_image, caption='Profile Picture', width=200)
-        if st.button("Update your profile picture"):
-            # Show the file uploader when the user wants to update the profile picture
-            image_file = st.file_uploader("Upload a new profile picture", type=['png', 'jpg', 'jpeg'], key="update")
+        st.image(profile_image, caption='Profile Picture', width=150)
 
+        # Show "Update Profile Picture" button if an image is already uploaded
+        if st.button("Update Profile Picture"):
+            image_file = st.file_uploader("Upload a new profile picture", type=['png', 'jpg', 'jpeg'])
+            
             if image_file is not None:
-                # Save the uploaded image
-                save_image(image_file, user_id)
-                st.success("Profile picture updated! Please refresh the page.")
+                if image_file.size > 2 * 1024 * 1024:  # 2MB limit
+                    st.error("File size exceeds the 2MB limit. Please upload a smaller file.")
+                else:
+                    # Save the uploaded image
+                    file_path = save_image(image_file, user_id)
+                    st.success("Profile picture updated!")
+                    st.image(load_image(user_id), caption='Profile Picture', width=150)
     else:
-        # Show the file uploader for the first time when no profile picture is uploaded
-        image_file = st.file_uploader("Upload a profile picture", type=['png', 'jpg', 'jpeg'], key="upload")
-
+        # Show upload option if no image is uploaded yet
+        image_file = st.file_uploader("Upload your profile picture", type=['png', 'jpg', 'jpeg'])
+        
         if image_file is not None:
-            # Save the uploaded image
-            save_image(image_file, user_id)
-            st.success("Profile picture uploaded! Please refresh the page.")
+            if image_file.size > 2 * 1024 * 1024:  # 2MB limit
+                st.error("File size exceeds the 2MB limit. Please upload a smaller file.")
+            else:
+                # Save the uploaded image
+                file_path = save_image(image_file, user_id)
+                st.success("Profile picture uploaded!")
+                st.image(load_image(user_id), caption='Profile Picture', width=150)
 
 # Sample user 375
-user_id = "user_375"  
+user_id = "user_375" 
 user_profile(user_id)
 
 st.markdown(f"**Username:** {user_data['username']}")
 st.markdown(f"**Name:** {user_data['full_name']}")
+
+
 
 
 
