@@ -79,4 +79,4 @@ The datasets fueling the recommendations were modified from
 - https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset
 - https://www.kaggle.com/datasets/dbdmobile/myanimelist-dataset
 
-The repository [MaxYurch/MANGOLEAF-APP](https://github.com/MaxYurch/MANGOLEAF-APP) is an adjacent implementation.
+The repository [szapp/Mangoleaf](https://github.com/szapp/Mangoleaf) is an adjacent implementation.
