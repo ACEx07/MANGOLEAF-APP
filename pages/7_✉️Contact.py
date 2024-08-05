@@ -2,6 +2,8 @@
 Contact form
 """
 
+import os
+
 import streamlit as st
 
 from mangoleaf import frontend
@@ -11,14 +13,7 @@ frontend.add_style()
 frontend.add_sidebar_login()
 frontend.add_sidebar_logo()
 
-# Column layout for the logo and user profile information
-col1, col2 = st.columns([1, 7])
-
-with col1:
-    st.image("images/mango_logo.png", width=130)
-
-with col2:
-    st.title("**CONTACT**", anchor=False)
+frontend.add_header_logo("Contact")
 
 st.title("**We'd Love to Hear from You!**", anchor=False)
 
@@ -36,7 +31,7 @@ Drop us a message below, and let's start a conversation!
 st.header(":mailbox: Get In Touch With Us!", anchor=False)
 
 contact_form = f"""
-<form action="https://formsubmit.co/{st.secrets.contact_form.email}" method="POST">
+<form action="https://formsubmit.co/{os.environ.get('CONTACT_EMAIL', '')}" method="POST">
      <input type="hidden" name="_captcha" value="false">
      <input type="text" name="name" placeholder="Your name" required>
      <input type="email" name="email" placeholder= "Your email" required>
