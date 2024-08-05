@@ -78,7 +78,7 @@ def item_based(dataset, n=40):
     ratings = pd.read_sql(f"SELECT * FROM {dataset}_ratings", Connection().get())
 
     # Load data into surprise
-    reader = Reader(rating_scale=(1, 10))
+    reader = Reader(rating_scale=(1, 5))
     data = Dataset.load_from_df(ratings, reader)
 
     # Create item-based collaborative filtering model
@@ -129,7 +129,7 @@ def user_based(dataset, users, n=40):
     ratings = pd.read_sql(f"SELECT * FROM {dataset}_ratings", Connection().get())
 
     # Load data into surprise
-    reader = Reader(rating_scale=(1, 10))
+    reader = Reader(rating_scale=(1, 5))
     data = Dataset.load_from_df(ratings, reader)
 
     # Create item-based collaborative filtering model
