@@ -7,7 +7,9 @@ jupyterlab
 notebook
 numpy==1.26.4
 pandas
+pillow
 psycopg2-binary
+python-dotenv
 scikit-surprise
 sqlalchemy
 streamlit
