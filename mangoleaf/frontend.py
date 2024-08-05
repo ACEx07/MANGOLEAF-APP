@@ -2,14 +2,23 @@
 Functionality for the frontend of repeated tasks
 """
 
+import base64
+import io
 import re
 
 import pandas as pd
 import streamlit as st
+from PIL import Image
 
 from mangoleaf import authentication, query
 
-tv_keywords = re.compile(r"(\s*season\s*\d*\s*|\s*\d*[st|rd|th|\.]*season\s*)", re.IGNORECASE)
+tv_keywords = re.compile(
+    r"(\s*(00)?\:?\s*(the)?\s*(final|second|first|third)?\s*season"
+    r"\s*(two)?\d*\s*(part)?\s*\d*\s*(part)?\s*\d*\s*\:?|"
+    r"\s*(\d+(st|nd|rd|th|\.))?\s*season|"
+    r"\s*part\s*\d*\s*)",
+    re.IGNORECASE,
+)
 
 
 def add_config():
@@ -32,7 +41,7 @@ def add_header_logo(header):
 
 
 def add_sidebar_logo():
-    st.sidebar.image("images/mango_logo.png", use_column_width=True)
+    st.sidebar.image("images/mango_logo_500.png", use_column_width=True)
 
 
 def add_user_input(default_user_id):
@@ -108,10 +117,10 @@ def make_row(df, n, context=st):
             st.markdown(
                 html_element.format(
                     url=url,
-                    item_id=row.iloc[0],
-                    title=row.iloc[1],
+                    item_id=row["item_id"],
+                    title=row["title"],
                     secondary=row.iloc[2],
-                    img_src=row.iloc[3],
+                    img_src=row["image"],
                 ),
                 unsafe_allow_html=True,
             )
@@ -119,7 +128,7 @@ def make_row(df, n, context=st):
 
 def add_recommendations(dataset, user_id, n):
     # Check if user_id has rated items in that dataset
-    user_id_valid = user_id if query.user_exists(user_id, dataset) else None
+    user_id_valid = user_id if query.user_rating_exists(user_id, dataset) else None
 
     # First row
     add_row_header(f"Popular {dataset}")
@@ -179,7 +188,9 @@ def add_recommendations(dataset, user_id, n):
                 make_row(df, n, third_row)
             else:
                 third_row.info(
-                    "**All caught up!**  \nStart rating more items to get more recommendations"
+                    "**All caught up!**"
+                    "   \nStart rating more items to get more recommendations"
+                    "   \nRecommendations are updated every 24 hours"
                 )
 
     return hydrate
@@ -222,10 +233,10 @@ def add_mixed_recommendations(n):
             with col:
                 st.markdown(
                     html_element.format(
-                        item_id=row.iloc[0],
-                        title=row.iloc[1],
+                        item_id=row["item_id"],
+                        title=row["title"],
                         secondary=row.iloc[2],
-                        img_src=row.iloc[3],
+                        img_src=row["image"],
                     ),
                     unsafe_allow_html=True,
                 )
@@ -270,9 +281,9 @@ def filter_builder(filter_options, display_names=None):
                 user_text_input = st.text_input(f"Search {disp_name}", key=f"{column}_text_input")
                 if user_text_input:
                     query_params[column] = f"%{user_text_input}%"
-                    clauses.append(column + f" LIKE %({column})s")
+                    clauses.append(column + f" ILIKE %({column})s")
             elif isinstance(filter_type, str) and filter_type == "rating":
-                # Numeric range slider
+                # Rating slider
                 col1, col2 = st.columns(2, gap="large", vertical_alignment="center")
                 user_num_input = col1.slider(
                     "Range of your rating",
@@ -296,17 +307,53 @@ def filter_builder(filter_options, display_names=None):
                     )
                 else:
                     clauses.append(column + f" BETWEEN %({column}_min)s AND %({column}_max)s")
+            elif (
+                isinstance(filter_type, (tuple, list))
+                and all(isinstance(i, (int, float)) for i in filter_type)
+                and len(filter_type) == 2
+            ):
+                # Numeric range slider
+                is_int = all(
+                    isinstance(i, (int, float)) and (isinstance(i, int) or i.is_integer())
+                    for i in filter_type
+                )
+                if is_int:
+                    _min = int(filter_type[0])
+                    _max = int(filter_type[1])
+                    step = 1
+                else:
+                    _min = float(filter_type[0])
+                    _max = float(filter_type[1])
+                    step = (_max - _min) / 100
+                col1, col2 = st.columns(2, gap="large", vertical_alignment="center")
+                user_num_input = col1.slider(
+                    f"Range of {disp_name}",
+                    min_value=_min,
+                    max_value=_max,
+                    value=(_min, _max),
+                    step=step,
+                    key=f"{column}_num_slider",
+                )
+                if is_int:
+                    query_params[f"{column}_min"] = int(user_num_input[0])
+                    query_params[f"{column}_max"] = int(user_num_input[1])
+                else:
+                    query_params[f"{column}_min"] = float(user_num_input[0])
+                    query_params[f"{column}_max"] = float(user_num_input[1])
+                clauses.append(column + f" BETWEEN %({column}_min)s AND %({column}_max)s")
             else:
                 # Categorical values
                 filter_type = list(map(str, filter_type))
                 user_cat_input = st.multiselect(
                     f"Categories of {disp_name}",
                     filter_type,
-                    default=filter_type,
+                    default=[],
+                    placeholder="Choose to filter",
                     key=f"{column}_cat_multiselect",
                 )
-                query_params[column] = tuple(user_cat_input)
-                clauses.append(column + f" IN %({column})s")
+                for i, cat in enumerate(user_cat_input):
+                    query_params[f"{column}_{i}"] = f"%{cat}%"
+                    clauses.append(column + f" ILIKE %({column}_{i})s")
 
     where_query = " AND ".join(clauses)
     if where_query:
@@ -412,9 +459,9 @@ def add_explorer(dataset, user_id, n, filter_options, display_names=None):
     """
 
     # Add the items in a grid
-    outer_columns = st.columns(3)
+    outer_columns = st.columns(3, vertical_alignment="top")
     for idx, (_, row) in enumerate(df.iterrows()):
-        col1, col2 = outer_columns[idx % 3].columns([1, 3])
+        col1, col2 = outer_columns[idx % 3].columns([1, 3], vertical_alignment="top")
 
         col1.html(
             html_element.format(
@@ -425,17 +472,32 @@ def add_explorer(dataset, user_id, n, filter_options, display_names=None):
                 img_src=row["image"],
             )
         )
-        col2.markdown(f"**{row['title']}**  \n{row.iloc[2]}")
-        key = f"rate_{row['item_id']}"
-        col2.feedback(
-            "stars",
-            key=key,
-            on_change=update_rating,
-            args=(dataset, user_id, row["item_id"], row.get("rating", pd.NA), key),
-            disabled=user_id is None,
+        title = tv_keywords.sub("", row["title"])
+        if dataset == "mangas":
+            cat_list = str(row.iloc[3]).split("|")
+            elements = "".join([f"<span>{cat}</span>" for cat in cat_list])
+            categories = f"<div class='explorer_genres'>{elements}</div>"
+        else:
+            categories = row.iloc[3]
+        col2.html(
+            f"""
+                <b>{title}</b><br />
+                <span class="secondary">{row.iloc[2]}</span><br />
+                <span class="secondary">{categories}</span>
+                <div class="explorer_details_screen"></div>
+            """
         )
-        if user_id is None:
-            col2.markdown("Log in to rate")
+        if user_id is not None:
+            key = f"rate_{row['item_id']}"
+            col2.feedback(
+                "stars",
+                key=key,
+                on_change=update_rating,
+                args=(dataset, user_id, row["item_id"], row.get("rating", pd.NA), key),
+                disabled=user_id is None,
+            )
+        else:
+            col2.markdown(":material/star: Log in to rate")
 
     # Add note about limited results
     if len(df) >= n:
@@ -448,13 +510,97 @@ def add_explorer(dataset, user_id, n, filter_options, display_names=None):
         )
 
 
+def load_profile_image(user_id):
+    """
+    Load the saved image for the user
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to load the image for
+
+    Returns
+    -------
+    image : str or None
+        Base64 encoded image or None if there is no image
+    """
+    user_info = query.get_extended_user_info(user_id)
+    return user_info["image"]
+
+
+def upload_profile_image(user_id, image_size_px=150):
+    """
+    Upload new user profile image
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to upload the image for
+
+    image_size_px : int, optional
+        Square image dimensions. Do not change: Hardcoding in CSS style
+        sheet! Default is 150
+
+    Returns
+    -------
+    success : bool
+        True if the image was uploaded successfully
+    """
+    image_file = st.file_uploader("Upload your profile picture", type=["png", "jpg", "jpeg"])
+    if image_file is not None:
+        if image_file.size > 2 * 1024 * 1024:  # 2MB limit
+            st.toast("File size exceeds the 2MB limit. Please upload a smaller file.", icon="⚠️")
+            return False
+
+        im = Image.open(image_file)
+
+        # Crop the image to a square
+        width, height = im.size
+        max_center = min(width, height) // 2
+        center = width // 2, height // 2
+        im = im.crop(
+            (
+                center[0] - max_center,
+                center[1] - max_center,
+                center[0] + max_center,
+                center[1] + max_center,
+            )
+        )
+
+        # Resize the image
+        im = im.resize((image_size_px, image_size_px))
+
+        # Save to bytes as PNG
+        img_byte_arr = io.BytesIO()
+        im.save(img_byte_arr, format="PNG")
+
+        # Save to database
+        im_bytes = img_byte_arr.getvalue()
+        im_b64 = base64.b64encode(im_bytes)
+        query.set_user_image(user_id, im_b64.decode("utf-8"))
+        return True
+    return False
+
+
 def add_sidebar_login():
     if authentication.is_authenticated():
         user = authentication.get_user_info()
-        st.sidebar.markdown(f"Logged in as {user['username']}")
-        if st.sidebar.button("Logout", key="sidebar_logout"):
+        profile_image = load_profile_image(user["user_id"])
+        if profile_image is not None:
+            col1, col2 = st.sidebar.columns([1, 2.25])
+            image_html = "<img src='data:image/png;base64,{profile_image}' alt='' class='welcome'>"
+            col1.markdown(image_html.format(profile_image=profile_image), unsafe_allow_html=True)
+            ct = col2
+        else:
+            ct = st.sidebar
+        ct.html(
+            f"""
+        <div class="welcome_text">Welcome, <b>{user['full_name']}</b></div>
+        <div class="welcome_text_overflow"></div>
+        """
+        )
+        if ct.button("Logout", key="sidebar_logout"):
             authentication.reset()
-            st.sidebar.info("You have logged out")
             st.rerun()
     else:
         st.sidebar.title("Login")
@@ -463,15 +609,31 @@ def add_sidebar_login():
         with st.sidebar.form("login_mask", border=False):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Login")
+            col1, col_grow, col2 = st.columns([1, 0.01, 1])
+            col_grow.html("<div class='login_submit_spacer'></div>")
+            submit_login = col1.form_submit_button("Login")
+            submit_register = col2.form_submit_button("Sign up", type="secondary")
 
         # Sidebar button for login
-        if submit:
+        if submit_login:
             if authentication.authenticate(username, password):
-                user = authentication.get_user_info()
-                st.sidebar.success(f"Welcome {user['username']}")
                 st.rerun()
             else:
                 st.sidebar.error("Username/password is incorrect")
+
+        # Sidebar button for registration
+        if submit_register:
+            min_length = 8
+            status = authentication.register(username, password, min_length)
+            if status is True:
+                st.sidebar.success("Registration successful! Please log in")
+            elif status == "user_exists":
+                st.sidebar.error("Username is already taken")
+            elif status == "username_short":
+                st.sidebar.error("Username is too short (minimum 5 characters)")
+            elif status == "password_short":
+                st.sidebar.error(f"Password is too short (minimum {min_length} characters)")
+            else:
+                st.sidebar.error("Registration failed")
 
         st.sidebar.info("Please log in to access the content")
