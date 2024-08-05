@@ -36,7 +36,17 @@ st.subheader("How To Use MANGOLEAF", anchor=False)
 st.markdown(
     """
 Choose on the left if you are interested in Books or Manga and explore the recommendations!
-"""
+
+If you want to save your ratings and get personalized recommendations based on your ratings,
+create an account in the side bar.
+Personalized recommendations based on ratings are updated every 24 hours.
+
+<div class="explorer_info"><div align="center">
+  To prevent spam and abuse, user profiles are reset and deleted every 5 days.<br />
+  But you can export and download your ratings at any time.
+</div></div>
+""",
+    unsafe_allow_html=True,
 )
 
 hydrate_recommendation()
