@@ -2,7 +2,8 @@
 Establish a connection to the database
 """
 
-import streamlit as st
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 
@@ -12,7 +13,7 @@ def singleton(class_):
     instances = {}
 
     def getinstance(*args, **kwargs):
-        if class_ not in instances:
+        if class_ not in instances or kwargs.pop("force_new_instance", False):
             instances[class_] = class_(*args, **kwargs)
         return instances[class_]
 
@@ -27,7 +28,10 @@ class Connection:
 
         self.connection_string = "{protocol}://{user}:{password}@{host}/{database}?{query}".format(
             protocol="postgresql+psycopg2",
-            **st.secrets.db_credentials,
+            user=os.environ.get("POSTGRES_USER"),
+            password=os.environ.get("POSTGRES_PASSWORD"),
+            host=os.environ.get("POSTGRES_HOST"),
+            database=os.environ.get("POSTGRES_DB"),
             query="sslmode=require",
         )
 
