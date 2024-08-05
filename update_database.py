@@ -2,7 +2,9 @@
 Update the dynamic data with the latest recommendations
 """
 
-from mangoleaf import Connection, recommend
+from dotenv import load_dotenv
+
+from mangoleaf import Connection, query, recommend
 
 
 def update_database(users, n=40, count_threshold=50):
@@ -23,15 +25,20 @@ def update_database(users, n=40, count_threshold=50):
 
 
 if __name__ == "__main__":
+    load_dotenv(".streamlit/secrets.toml")
+
     # Selected users for user-based recommendations
     users = [
-        # Mangas
+        # Manga example users
         1002,
         357,
         2507,
-        # Books
+        # Book example users
         114368,
         95359,
         104636,
     ]
+    new_users = query.list_users_since("2024-08-01")
+    users += new_users
+
     update_database(users, 40, 50)
