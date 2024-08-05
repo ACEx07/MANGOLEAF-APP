@@ -1,28 +1,147 @@
 /* Style inputs with type="text", select elements and textareas */
-input[type=text], input[type=email], textarea {
-  width: 100%; /* Full width */
-  padding: 12px; /* Some padding */  
-  border: 1px solid #ccc; /* Gray border */
-  border-radius: 4px; /* Rounded borders */
-  box-sizing: border-box; /* Make sure that padding and width stays in place */
-  margin-top: 6px; /* Add a top margin */
-  margin-bottom: 16px; /* Bottom margin */
-  resize: vertical /* Allow the user to vertically resize the textarea (not horizontally) */
+input[type=text],
+input[type=email],
+textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border-width: 1px;
+  border-color: transparent;
+  box-sizing: border-box;
+  margin-top: 6px;
+  margin-bottom: 16px;
+  resize: vertical;
+  box-shadow: none;
+}
+input[type=text]:focus:not(:active),
+input[type=email]:focus:not(:active),
+textarea:focus:not(:active) {
+  border-color: rgb(255, 111, 77);
+}
+input[type=text]:focus,
+input[type=email]:focus,
+textarea:focus {
+  outline: none;
+}
+input[type=text]:focus-visible,
+input[type=email]:focus-visible,
+textarea:focus-visible {
+  border-color: #ff6f4d;
+  box-shadow: none;
 }
 
 /* Style the submit button with a specific background color etc */
 button[type=submit] {
-  background-color: #04AA6D;
+  background-color: #e4816a;
   color: white;
   padding: 12px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
 }
-
-/* When moving the mouse over the submit button, add a darker green color */
 button[type=submit]:hover {
-  background-color: #45a049;
+  background-color: #ff6f4d;
+}
+button[type=submit]:focus:not(:active) {
+  border-color: rgb(255, 111, 77);
+}
+button[type=submit]:focus {
+  outline: none;
+}
+button[type=submit]:focus-visible {
+  background-color: #ff6f4d;
+  box-shadow: rgba(255, 111, 77, 0.5) 0px 0px 0px 0.2rem;
+}
+
+/* Profile section */
+div.profile_card_container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1em;
+  align-items: center;
+  margin: 1em 0;
+  padding: 1em 0;
+  border: 1px solid #303030;
+  border-radius: 10px;
+  width: 200px;
+  max-width: 200px;
+  overflow: hidden;
+  position: relative;
+  background-color: rgb(23, 24, 33);
+}
+div.profile_card_overflow {
+  position: absolute;
+  width: 30px;
+  height: 100%;
+  right: 0;
+  background-color: transparent;
+  background-image: linear-gradient(270deg, rgb(23, 24, 33) 0px, transparent 100%);
+}
+/* Profile: image */
+div.profile_card_image_container {
+  width: 150px;
+  height: 150px;
+  box-sizing: border-box;
+  border-radius: 100%;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #e4816a;
+  overflow: hidden;
+  background-color: transparent;
+  background-image: linear-gradient(#303030 2px, transparent 2px),
+                    linear-gradient(90deg, #303030 2px, transparent 2px),
+                    linear-gradient(#303030 1px, transparent 1px),
+                    linear-gradient(90deg, #303030 1px, transparent 1px);
+  background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+  background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;
+}
+div.profile_card_image_container > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+div.profile_card_image_container > div.img_placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  color: #808080;
+}
+div.profile_card_image_container > div.img_placeholder > div {
+  border: 1px solid #808080;
+  background-color: #303030;
+  border-radius: 4px;
+  padding: 2px 4px;
+  opacity: 0.75;
+}
+div.profile_card_image_container > div.img_loading {
+  width: 100%;
+  height: 100%;
+  background-color: #303030;
+}
+div.profile_card_image_container > div.img_loading > div {
+  width: 100%;
+  height: 100%;
+  filter: blur(40px);
+  opacity: 0.7;
+  background: conic-gradient(
+     red 6deg, orange 6deg 18deg, yellow 18deg 45deg,
+     green 45deg 110deg, blue 110deg 200deg, purple 200deg);
+  animation: spin 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+/* Profile: user information */
+div.profile_card_info_container {
+  margin-left: 25px;
+  width: 175px;
+  white-space:nowrap;
+}
+div.profile_card_info_container > div {
+  font-size: 0.8em;
+  margin-left: 2px;
+}
+div.profile_card_info_container > div:first-child {
+  font-size: 1.5em; line-height: 1;
 }
 
 /* Remove full screen buttons for images */
@@ -45,6 +164,12 @@ a, a:hover {
 span.highlight {
   color: #ff6f4d;
   font-weight: bold;
+}
+
+/* Secondary text color */
+span.secondary {
+  color: #909090;
+  font-size: 1em;
 }
 
 /* Recommendation row header text */
@@ -127,35 +252,99 @@ div.rec_element:hover div.rec_text {
     opacity: .5;
   }
 }
+@keyframes spin {
+  100% {
+    transform:rotate(360deg);
+  }
+}
 
 /* Explorer table */
-.styled-table {
-  border-collapse: collapse;
-  margin: 25px 0;
-  font-size: 0.9em;
-  font-family: sans-serif;
-  min-width: 400px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-  border-radius: 10px 10px 0 0;
+div.explorer_info {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+div.explorer_info > div {
+  background-color: #202020;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 4px 12px;
+}
+/* Explorer details column */
+div:has(> div > div > div > div > div.explorer_details_screen),
+div:has(> div > div > div > div.explorer_details_screen),
+div:has(> div > div > div.explorer_details_screen) {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 3 / 1.25;
+}
+div:has(> div > div > div.explorer_details_screen) {
+  gap: 2px;
+}
+div:has(> div > div.explorer_details_screen) {
+  flex-grow: 1;
+  flex-shrink: 1;
+  overflow-y: hidden;
+  position: relative;
+}
+div.explorer_details_screen {
+  position: absolute;
+  width: 100%;
+  height: 15px;
+  bottom: 0px;
+  background-color: transparent;
+  background-image: linear-gradient(0deg, #0e1117 0px, transparent 100%);
+}
+
+/* Genres */
+div.explorer_genres {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 0.8em;
+}
+div.explorer_genres > span {
+  border: 1px solid #652b1e;
+  background-color: #1e0d08;
+  color: #d0d0d0;
+  border-radius: 6px;
+  padding: 0px 4px;
+}
+
+/* Sidebar login info */
+img.welcome {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 100%;
+  border: 2px solid #e4816a;
+}
+div.welcome_text {
+  white-space:nowrap;
   overflow: hidden;
 }
-.styled-table thead tr {
-  background-color: #333333;
-  color: #ffffff;
-  text-align: left;
+div.welcome_text > b {
+  color: #ff6f4d;
 }
-.styled-table th,
-.styled-table td {
-  padding: 12px 15px;
+div:has(> div.welcome_text_overflow) {
+  position: relative;
 }
-.styled-table tbody tr {
-  border-bottom: 1px solid #dddddd;
+div.welcome_text_overflow {
+  position: absolute;
+  width: 30px;
+  height: 100%;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  background-image: linear-gradient(270deg, #262730 0px, transparent 100%);
 }
-.styled-table tbody tr:last-of-type {
-  border-bottom: 2px solid #009879;
+div:has(> div > div > div > div > div > div > div.login_submit_spacer) {
+  justify-content: space-between;
 }
-.styled-table img {
-  width: 200px; /* Adjust this value to change image size */
-  height: auto;
-  border-radius: 5px;
+div:has(> div > div > div > div > div > div > div.login_submit_spacer) div {
+  width: unset!important;
+  flex: unset;
 }
